@@ -1,0 +1,27 @@
+---
+- name: create the log file
+  file:
+    path: /tmp/logs
+    group: docker
+    owner: ubuntu
+    mode: 0666
+    state: touch
+
+# use while loop to do the heanth check run every 10s
+- name: check container stats by using docker stats
+  shell: while true; do docker stats --no-stream nginx >> /tmp/logs; sleep 10; done &
+  poll: 0
+
+# can also use below format, but the output format is not good
+#- name: test
+#  shell: watch -n 3 docker stats --no-stream nginx >> /tmp/logs &
+#  poll: 0
+
+- name: show the logs file
+  shell: cat /tmp/logs
+  register: output
+
+# might need to wait for more time for the log generation
+- name: show the sorted results by using debug
+  debug:
+    msg="{{ output.stdout }}"

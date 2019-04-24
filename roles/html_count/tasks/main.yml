@@ -1,0 +1,29 @@
+---
+# store nginx page to file
+- name: get the default page inform
+  shell: curl localhost > /tmp/tmp1
+  args:
+    warn: false
+
+# strip the html tags file
+- name: strip the html tags
+  shell: sed "s/<[^>]\+>//g" /tmp/tmp1 > /tmp/tmp2
+  args:
+    warn: false
+
+# strip again of the non alpha characters
+- name: strip all the none alpha and numbers but keep space
+  shell: sed 's/[^ A-z0-9]//g' /tmp/tmp2 > /tmp/tmp3
+  args:
+    warn: false
+
+# count and sorted the worlds
+- name: count and sorted by alphabet order
+  shell: (tr ' ' '\n' | sort | uniq -c | awk '{print $2" "$1}') < /tmp/tmp3
+  args:
+    warn: false
+  register: result
+
+- name: show the sorted results by using debug
+  debug:
+    msg="{{ result.stdout }}"

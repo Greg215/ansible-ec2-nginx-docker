@@ -1,0 +1,28 @@
+---
+- name: check if the disk has been mounted
+  shell: df -h | grep /dev/xvdf | wc -l
+  register: ebs_checked
+
+- name: debug if the volumes has been mounted
+  debug:
+    msg: "{{ ebs_checked }}"
+  when: ebs_checked.stdout == "0"
+
+- name: create file system for attached volume
+  filesystem:
+        fstype: ext4
+        dev: /dev/xvdf
+        force: yes
+  when: ebs_checked.stdout == "0"
+
+- name: create volume directory
+  file:
+        path: /volumes
+        state: directory
+
+- name: mount volume
+  mount:
+      path: /volumes
+      src: /dev/xvdf
+      fstype: ext4
+      state: mounted

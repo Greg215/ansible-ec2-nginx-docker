@@ -1,0 +1,33 @@
+---
+# check the instance and volume if created
+- set_fact:
+    from_ami: False
+
+- name: check if the instance exist by tags
+  ec2_instance_facts:
+      region: "{{ aws_region }}"
+      filters:
+        instance-state-name: running
+        "tag:Name": "{{ host_name }}"
+  register: created_ec2
+
+- debug:
+    var: created_ec2
+
+- name: add inventory groups from created instance
+  add_host:
+    name: "{{ item.public_ip_address }}"
+    groups: "{{ item.tags.Name }}"
+    ansible_user: ubuntu
+  changed_when: false
+  with_items: "{{ created_ec2.instances }}"
+
+- name: check if the volumes exist by tags
+  ec2_vol_facts:
+      region: "{{ aws_region }}"
+      filters:
+        "tag:Name": "{{ volume_name }}"
+  register: created_vol
+
+- debug:
+    var: created_vol

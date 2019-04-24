@@ -1,0 +1,26 @@
+---
+# create the volume for nginx
+- name: create nginx volume directory
+  file:
+    path: /volumes/nginx
+    state: directory
+    owner: ubuntu
+
+# build and run nginx container
+- name: run nginx
+  docker_container:
+     name: nginx
+     image: nginx:latest
+     ports:
+       - 80:80
+       - 443:443
+     volumes:
+       - /volumes/nginx/log:/var/log/nginx
+
+- name: restart nginx
+  command: docker restart nginx
+
+- name: check the docker status
+  docker_container:
+    name: nginx
+    state: started

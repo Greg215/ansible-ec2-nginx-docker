@@ -1,0 +1,118 @@
+---
+- name: Check sg exists or create Sec Group
+  ec2_group:
+    name: "air_seg"
+    description: "Security Group for single node"
+    region: "{{ aws_region }}"
+    vpc_id: "{{ aws_vpc }}"
+    rules:
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: 0.0.0.0/0
+    rules_egress:
+      - proto: all
+        cidr_ip: 0.0.0.0/0
+    state: present
+  register: air_sec_group
+
+- debug:
+    msg: "{{ air_sec_group }}"
+
+- name: Create subnet
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ aws_vpc }}"
+    cidr: "{{ cidr_dt }}"
+    region: "{{ aws_region }}"
+    az: "{{ aws_az }}"
+    resource_tags:
+      Name: air_net
+  register: air_net
+
+- name: create machine from base image if not created yet
+  ec2:
+    region: "{{ aws_region }}"
+    instance_type: "{{ instance_type }}"
+    vpc_subnet_id: "{{ air_net.subnet.id }}"
+    image: "{{ base_image }}"
+    wait: yes
+    count_tag:
+      Name: "{{ host_name }}"
+    exact_count: 1
+    group_id: "{{ air_sec_group.group_id }}"
+    key_name: "{{ sshkey_name }}"
+    assign_public_ip: yes
+  register: machines
+
+- set_fact:
+    machine: "{{ machines.tagged_instances|first }}"
+
+- name: Add tags to the reated instance
+  ec2_tag:
+    region: "{{ aws_region }}"
+    resource: "{{ machine.id }}"
+    tags:
+      Purpose: "{{ purpose }}"
+      owner: "{{ owner }}"
+      Name: "{{ host_name }}"
+
+- name: create and attach the volume to the new instance if not created
+  ec2_vol:
+     region: "{{ aws_region }}"
+     instance: "{{ machine.id }}"
+     name: "{{ volume_name }}"
+     tags:
+       owner: "{{ owner }}"
+     device_name: /dev/sdf
+     volume_size: "{{ size_of_volume }}"
+     delete_on_termination: yes
+  register: ec2_vol
+
+- name: create private key pem file
+  blockinfile:
+    path: /tmp/aws_key.pem
+    block: "{{ private_key }}"
+    create: yes
+    mode: 0400
+
+- name: add inventory groups
+  add_host:
+    name: "{{ machine.public_ip }}"
+    groups: "{{ group_name }}"
+    ansible_ssh_private_key_file: /tmp/aws_key.pem
+    ansible_user: ubuntu
+
+- name: wait for SSH to come up
+  wait_for:
+    host: "{{ machine.public_ip }}"
+    port: 22
+    delay: 60
+    timeout: 360
+    state: started
+
+- name: Render etc hosts
+  become: true
+  command: hostname
+  delegate_to: "{{ machine.public_ip }}"
+
+- name: filter to find machines
+  ec2_instance_facts:
+    region: "{{ aws_region }}"
+    filters:
+      instance-state-name: running
+      "tag:Name": "{{ host_name }}"
+  register: tagged_machine
+
+- name: Change hostnames of the new instance
+  become: true
+  shell: echo '{{ item.tags.Name }}' > /etc/hostname | hostname '{{ item.tags.Name}}'
+  delegate_to: "{{ machine.public_ip }}"
+  with_items: "{{ tagged_machine.instances }}"
+
+- debug:
+    msg: "Host started"

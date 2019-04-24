@@ -1,0 +1,14 @@
+---
+aws_region: eu-west-1
+aws_az: eu-west-1a
+sshkey_name: greg-test
+base_image: ami-08d658f84a6d84a80
+purpose: air-test
+aws_vpc: vpc-85a254e2
+volume_name: air-test-vol
+size_of_volume: 20
+owner: "Greg"
+instance_type: t2.micro
+host_name: airtest
+group_name: airtest
+cidr_dt: 172.31.230.0/28
