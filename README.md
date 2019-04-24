@@ -13,7 +13,7 @@ Use the curl get the html file of Nginx default page and store and file. Do stri
 
 The last is use while loop to do the heanth check run every 10s and store in logs file.
 
-Requriement to run this code:
+# Requriement to run this code:
 
 Ubuntu 16 and above, this code has been etsted on 18.04. 
 Add ansible_python_interpreter=/usr/bin/python3 as Ansibe default uses python2, and new Ubuntu default has python3.
